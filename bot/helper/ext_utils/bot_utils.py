@@ -3,7 +3,6 @@ import re
 import threading
 import time
 
-from bot.helper.telegram_helper.bot_commands import BotCommands
 from bot import download_dict, download_dict_lock
 
 LOGGER = logging.getLogger(__name__)
@@ -14,17 +13,17 @@ URL_REGEX = r"(?:(?:https?|ftp):\/\/)?[\w/\-?=%.]+\.[\w/\-?=%.]+"
 
 
 class MirrorStatus:
-    STATUS_UPLOADING = "Uploading...📤"
-    STATUS_DOWNLOADING = "Downloading...📥"
-    STATUS_WAITING = "Queued...📝"
-    STATUS_FAILED = "Failed 🚫. Cleaning Download..."
-    STATUS_CANCELLED = "Cancelled ❌. Cleaning Download..."
-    STATUS_ARCHIVING = "Archiving...🔐"
-    STATUS_EXTRACTING = "Extracting...📂"
+    STATUS_UPLOADING = "Uᴘʟᴏᴀᴅɪɴɢ...📤"
+    STATUS_DOWNLOADING = "Dᴏᴡɴʟᴏᴀᴅɪɴɢ...📥"
+    STATUS_WAITING = "Qᴜᴇᴜᴇᴅ...🕰️"
+    STATUS_FAILED = "Fᴀɪʟᴇᴅ🚀. Cʟᴇᴀɴɪɴɢ Dᴏᴡɴʟᴏᴀᴅ...🚮"
+    STATUS_CANCELLED = "Cᴀɴᴄᴇʟʟᴇᴅ⚔️"
+    STATUS_ARCHIVING = "Aʀᴄʜɪᴠɪɴɢ...🔐"
+    STATUS_EXTRACTING = "Exᴛʀᴀᴄᴛɪɴɢ...📂"
 
 
 PROGRESS_MAX_SIZE = 100 // 8
-PROGRESS_INCOMPLETE = ['▏', '▎', '▍', '▌', '▋', '▊', '▉']
+PROGRESS_INCOMPLETE = ['▰', '▰', '▰', '▰', '▰', '▰', '▰']
 
 SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
 
@@ -64,7 +63,7 @@ def getDownloadByGid(gid):
     with download_dict_lock:
         for dl in download_dict.values():
             status = dl.status()
-            if status != MirrorStatus.STATUS_UPLOADING and status != MirrorStatus.STATUS_ARCHIVING \
+            if status != MirrorStatus.STATUS_UPLOADING and status != MirrorStatus.STATUS_ARCHIVING\
                     and status != MirrorStatus.STATUS_EXTRACTING:
                 if dl.gid() == gid:
                     return dl
@@ -81,10 +80,10 @@ def get_progress_bar_string(status):
     p = min(max(p, 0), 100)
     cFull = p // 8
     cPart = p % 8 - 1
-    p_str = '█' * cFull
+    p_str = '▰' * cFull
     if cPart >= 0:
         p_str += PROGRESS_INCOMPLETE[cPart]
-    p_str += ' ' * (PROGRESS_MAX_SIZE - cFull)
+    p_str += '▱' * (PROGRESS_MAX_SIZE - cFull)
     p_str = f"[{p_str}]"
     return p_str
 
@@ -93,23 +92,20 @@ def get_readable_message():
     with download_dict_lock:
         msg = ""
         for download in list(download_dict.values()):
-            msg += f"<b>Filename:</b> <code>{download.name()}</code>"
-            msg += f"\n<b>Status:</b> <i>{download.status()}</i>"
+            msg += f"<b>🍟Fɪʟᴇɴᴀᴍᴇ :</b> <code>{download.name()}</code>"
+            msg += f"\n<b>🏂Sᴛᴀᴛᴜs :</b> <i>{download.status()}</i>"
             if download.status() != MirrorStatus.STATUS_ARCHIVING and download.status() != MirrorStatus.STATUS_EXTRACTING:
-                msg += f"\n<code>{get_progress_bar_string(download)} {download.progress()}</code>"
-                if download.status() == MirrorStatus.STATUS_DOWNLOADING:
-                    msg += f"\n<b>Downloaded:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
-                else:
-                    msg += f"\n<b>Uploaded:</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}"
-                msg += f"\n<b>Speed:</b> {download.speed()}\n<b>ETA:</b> {download.eta()} "
+                msg += f"\n<code>{get_progress_bar_string(download)} {download.progress()}</code>" \
+                       f"\n<b>📤Dᴏᴡɴʟᴏᴀᴅᴇᴅ :</b> {get_readable_file_size(download.processed_bytes())} of {download.size()}" \
+                       f"\n<b>☄️Sᴘᴇᴇᴅ :</b> {download.speed()}, \n<b>🕰️ETA:</b> {download.eta()} "
                 # if hasattr(download, 'is_torrent'):
                 try:
-                    msg += f"\n<b>Seeders:</b> {download.aria_download().num_seeders}" \
-                        f" | <b>Peers:</b> {download.aria_download().connections}"
+                    msg += f"\n<b>✒️Info :- 🍱Sᴇᴇᴅs:</b> {download.aria_download().num_seeders}" \
+                        f" & <b>🌭Pᴇᴇʀs :</b> {download.aria_download().connections}"
                 except:
                     pass
             if download.status() == MirrorStatus.STATUS_DOWNLOADING:
-                msg += f"\n<b>To Stop:</b> <code>/{BotCommands.CancelMirror} {download.gid()}</code>"
+                msg += f"\n<b>🚫Cᴀɴᴄᴇʟ :</b> <code>/cancel1 {download.gid()}</code>"
             msg += "\n\n"
         return msg
 
@@ -140,6 +136,13 @@ def is_url(url: str):
     return False
 
 
+def is_magnet(url: str):
+    magnet = re.findall(MAGNET_REGEX, url)
+    if magnet:
+        return True
+    return False
+
+
 def is_mega_link(url: str):
     return "mega.nz" in url
 
@@ -151,12 +154,6 @@ def get_mega_link_type(url: str):
     elif "/#F!" in url:
         return "folder"
     return "file"
-
-def is_magnet(url: str):
-    magnet = re.findall(MAGNET_REGEX, url)
-    if magnet:
-        return True
-    return False
 
 def new_thread(fn):
     """To use as decorator to make a function call threaded.
